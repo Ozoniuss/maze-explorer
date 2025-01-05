@@ -46,14 +46,24 @@ func main() {
 
 	fmt.Println(start, end)
 	myApp := app.New()
-	myWindow := myApp.NewWindow("Exploration algorithms")
+	myWindow := myApp.NewWindow("Maze Explorer")
 	myWindow.Resize(fyne.NewSquareSize(512))
 
-	algorithms := widget.NewRadioGroup([]string{"bfs", "dfs"}, func(s string) {})
+	rgExploreType := widget.NewRadioGroup([]string{"bfs", "dfs"}, func(s string) {})
+	rgExploreType.Selected = "bfs"
+	rgExploreType.Horizontal = true
+
+	var explorer *explorers.BfsExplorer
+	btnStartExplore := widget.NewButton("Explore!", func() {
+
+	})
+
+	hbSelectionContent := container.NewHBox(rgExploreType, btnStartExplore)
+
 	grid := initBoardContainer(len(board), len(board[0]))
-	content := container.NewVBox(algorithms, grid)
+	content := container.NewVBox(hbSelectionContent, grid)
 	myWindow.SetContent(content)
-	explorer := explorers.NewBfsExplorer(board, start, end)
+	explorer = explorers.NewBfsExplorer(board, start, end)
 	clen := explorer.Currlen
 	go func() {
 		for explorer.Explore() {
