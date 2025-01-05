@@ -47,37 +47,40 @@ func main() {
 	fmt.Println(start, end)
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Maze Explorer")
-	myWindow.Resize(fyne.NewSquareSize(512))
+	// myWindow.Resize(fyne.NewSquareSize(512))
 
 	rgExploreType := widget.NewRadioGroup([]string{"bfs", "dfs"}, func(s string) {})
 	rgExploreType.Selected = "bfs"
 	rgExploreType.Horizontal = true
 
-	var explorer *explorers.BfsExplorer
-	btnStartExplore := widget.NewButton("Explore!", func() {
-
-	})
-
+	btnStartExplore := widget.NewButton("Explore!", func() {})
 	hbSelectionContent := container.NewHBox(rgExploreType, btnStartExplore)
 
 	grid := initBoardContainer(len(board), len(board[0]))
 	content := container.NewVBox(hbSelectionContent, grid)
 	myWindow.SetContent(content)
-	explorer = explorers.NewBfsExplorer(board, start, end)
-	clen := explorer.Currlen
-	go func() {
-		for explorer.Explore() {
-			if clen < explorer.Currlen {
-				clen = explorer.Currlen
-				drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-				time.Sleep(10 * time.Millisecond)
-			}
-		}
-		fmt.Println("sp", explorer.ShortestPath)
-		drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-		grid.Refresh()
 
-	}()
+	drawBoard(grid, board, nil, nil)
+
+	btnStartExplore.OnTapped = func() {
+		btnStartExplore.Disable()
+		explorer := explorers.NewBfsExplorer(board, start, end)
+		clen := explorer.Currlen
+		go func() {
+			for explorer.Explore() {
+				if clen < explorer.Currlen {
+					clen = explorer.Currlen
+					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			grid.Refresh()
+			btnStartExplore.Enable()
+		}()
+
+	}
+
 	myWindow.ShowAndRun()
 }
 
@@ -96,6 +99,7 @@ func initBoardContainer(r, c int) *fyne.Container {
 func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
 	rectangles := grid.Objects
 	size := len(board)
+	// ms := canvas.NewText("S", color.Black).MinSize()
 	for i := range len(board) {
 		for j := range len(board[0]) {
 			if board[i][j] == '#' {
@@ -109,9 +113,9 @@ func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struc
 					rectangles[i*size+j] = canvas.NewRectangle(color.Black)
 				}
 			} else if board[i][j] == 'S' {
-				rectangles[i*size+j] = canvas.NewText("S", color.White)
+				rectangles[i*size+j] = canvas.NewText("S  ", color.White)
 			} else if board[i][j] == 'E' {
-				rectangles[i*size+j] = canvas.NewText("E", color.White)
+				rectangles[i*size+j] = canvas.NewText("E  ", color.White)
 			}
 		}
 	}
