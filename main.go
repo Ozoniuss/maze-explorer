@@ -59,7 +59,7 @@ func main() {
 	content := container.NewVBox(hbSelectionContent, grid)
 	myWindow.SetContent(content)
 
-	drawBoard(start, grid, board, nil, nil)
+	drawBoard(grid, board, nil, nil)
 	explorer := explorers.NewBfsExplorer(board, start, end)
 
 	canceled := atomic.Bool{}
@@ -71,17 +71,17 @@ func main() {
 		go func() {
 			for explorer.ExploreUntilNewCellsAreFound() {
 				if canceled.Load() == false {
-					drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 					time.Sleep(10 * time.Millisecond)
 				} else {
 					canceled.Store(false)
 					explorer.Reset()
-					drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 					btnStartExplore.Enable()
 					return
 				}
 			}
-			drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 			btnStartExplore.Enable()
 			solutionDrawn.Store(true)
 			fmt.Println("done here", explorer.ShortestPath)
@@ -92,7 +92,7 @@ func main() {
 	btnCancelExploration.OnTapped = func() {
 		if solutionDrawn.CompareAndSwap(true, false) {
 			explorer.Reset()
-			drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 			return
 		}
 		// only swap if canceled is set to false. if it's set to true,
@@ -131,7 +131,7 @@ func drawLetter(letter string, pos coord.Pos, visited map[coord.Pos]struct{}, sh
 	return final
 }
 
-func drawBoard(start coord.Pos, grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
+func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
 	rectangles := grid.Objects
 	size := len(board)
 	for i := range len(board) {
