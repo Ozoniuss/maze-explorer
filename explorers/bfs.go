@@ -37,6 +37,13 @@ type BfsExplorer struct {
 	ShortestPath []coord.Pos
 }
 
+func (b *BfsExplorer) Reset() {
+	clear(b.Q)
+	clear(b.Visited)
+	clear(b.ShortestPath)
+	b.Currlen = 0
+}
+
 func (b *BfsExplorer) buildParent() {
 	curr := b.End
 	arr := []coord.Pos{}

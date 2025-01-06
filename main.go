@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -50,27 +51,42 @@ func main() {
 	rgExploreType.Horizontal = true
 
 	btnStartExplore := widget.NewButton("Explore!", func() {})
-	hbSelectionContent := container.NewHBox(rgExploreType, btnStartExplore)
+	btnCancelExploration := widget.NewButton("Cancel", func() {})
+	hbSelectionContent := container.NewHBox(rgExploreType, btnStartExplore, btnCancelExploration)
 
 	grid := initBoardContainer(len(board), len(board[0]))
 	content := container.NewVBox(hbSelectionContent, grid)
 	myWindow.SetContent(content)
 
 	drawBoard(grid, board, nil, nil)
+	explorer := explorers.NewBfsExplorer(board, start, end)
 
+	canceled := atomic.Bool{}
+	canceled.Store(false)
 	btnStartExplore.OnTapped = func() {
 		btnStartExplore.Disable()
-		explorer := explorers.NewBfsExplorer(board, start, end)
 		go func() {
 			for explorer.ExploreUntilNewCellsAreFound() {
-				drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-				time.Sleep(100 * time.Millisecond)
+				if canceled.Load() == false {
+					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					time.Sleep(100 * time.Millisecond)
+				} else {
+					canceled.Store(false)
+					explorer.Reset()
+					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					btnStartExplore.Enable()
+					return
+				}
 			}
 			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-			grid.Refresh()
 			btnStartExplore.Enable()
 		}()
+	}
 
+	btnCancelExploration.OnTapped = func() {
+		// only swap if canceled is set to false. if it's set to true,
+		// a cancellation hasn't been cleaned up yet.
+		canceled.CompareAndSwap(false, true)
 	}
 
 	myWindow.ShowAndRun()
