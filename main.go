@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"fmt"
 	"image/color"
 	"slices"
 	"strings"
@@ -23,7 +22,6 @@ var maze string
 
 func main() {
 	parts := strings.Split(maze, "\n")
-	fmt.Println(parts[0], parts[1])
 
 	board := make([][]byte, len(parts))
 	for i := range len(parts) {
@@ -44,10 +42,8 @@ func main() {
 		}
 	}
 
-	fmt.Println(start, end)
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Maze Explorer")
-	// myWindow.Resize(fyne.NewSquareSize(512))
 
 	rgExploreType := widget.NewRadioGroup([]string{"bfs", "dfs"}, func(s string) {})
 	rgExploreType.Selected = "bfs"
@@ -89,17 +85,14 @@ func initBoardContainer(r, c int) *fyne.Container {
 	for range r {
 		for range c {
 			grid.Add(canvas.NewRectangle(color.Black))
-			fmt.Println("ce")
 		}
 	}
-	fmt.Println("leno", len(grid.Objects))
 	return grid
 }
 
 func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
 	rectangles := grid.Objects
 	size := len(board)
-	// ms := canvas.NewText("S", color.Black).MinSize()
 	for i := range len(board) {
 		for j := range len(board[0]) {
 			if board[i][j] == '#' {
