@@ -58,7 +58,7 @@ func main() {
 	content := container.NewVBox(hbSelectionContent, grid)
 	myWindow.SetContent(content)
 
-	drawBoard(grid, board, nil, nil)
+	drawBoard(start, grid, board, nil, nil)
 	explorer := explorers.NewBfsExplorer(board, start, end)
 
 	canceled := atomic.Bool{}
@@ -68,17 +68,17 @@ func main() {
 		go func() {
 			for explorer.ExploreUntilNewCellsAreFound() {
 				if canceled.Load() == false {
-					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
 					time.Sleep(100 * time.Millisecond)
 				} else {
 					canceled.Store(false)
 					explorer.Reset()
-					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
 					btnStartExplore.Enable()
 					return
 				}
 			}
-			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
 			btnStartExplore.Enable()
 		}()
 	}
@@ -102,7 +102,23 @@ func initBoardContainer(r, c int) *fyne.Container {
 	return grid
 }
 
-func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
+func drawLetter(letter string, pos coord.Pos, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) *fyne.Container {
+	var rect *canvas.Rectangle
+	if len(shortestPath) != 0 {
+		rect = canvas.NewRectangle(color.RGBA{R: 255, G: 0, B: 0, A: 128})
+	} else if _, ok := visited[pos]; ok {
+		rect = canvas.NewRectangle(color.RGBA{R: 0, G: 255, B: 0, A: 128})
+	} else {
+		rect = canvas.NewRectangle(color.Black)
+	}
+	rect.SetMinSize(fyne.NewSize(20, 20)) // how can I make use of this better?
+	s := canvas.NewText(letter, color.White)
+	c := container.NewCenter(s)
+	final := container.New(layout.NewStackLayout(), rect, c)
+	return final
+}
+
+func drawBoard(start coord.Pos, grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
 	rectangles := grid.Objects
 	size := len(board)
 	for i := range len(board) {
@@ -118,9 +134,9 @@ func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struc
 					rectangles[i*size+j] = canvas.NewRectangle(color.Black)
 				}
 			} else if board[i][j] == 'S' {
-				rectangles[i*size+j] = canvas.NewText("S  ", color.White)
+				rectangles[i*size+j] = drawLetter("S", coord.Pos{i, j}, visited, shortestPath)
 			} else if board[i][j] == 'E' {
-				rectangles[i*size+j] = canvas.NewText("E  ", color.White)
+				rectangles[i*size+j] = drawLetter("E", coord.Pos{i, j}, visited, shortestPath)
 			}
 		}
 	}
