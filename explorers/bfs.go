@@ -52,6 +52,17 @@ func (b *BfsExplorer) buildParent() {
 	b.ShortestPath = arr
 }
 
+func (b *BfsExplorer) ExploreUntilNewCellsAreFound() bool {
+	c := b.Currlen
+	for b.Currlen == c {
+		ok := b.Explore()
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func (b *BfsExplorer) Explore() bool {
 	top := b.Q[0]
 	b.Q = b.Q[1:]

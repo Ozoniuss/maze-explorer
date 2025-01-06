@@ -61,14 +61,10 @@ func main() {
 	btnStartExplore.OnTapped = func() {
 		btnStartExplore.Disable()
 		explorer := explorers.NewBfsExplorer(board, start, end)
-		clen := explorer.Currlen
 		go func() {
-			for explorer.Explore() {
-				if clen < explorer.Currlen {
-					clen = explorer.Currlen
-					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-					time.Sleep(100 * time.Millisecond)
-				}
+			for explorer.ExploreUntilNewCellsAreFound() {
+				drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+				time.Sleep(100 * time.Millisecond)
 			}
 			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 			grid.Refresh()
