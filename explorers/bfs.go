@@ -38,9 +38,12 @@ type BfsExplorer struct {
 }
 
 func (b *BfsExplorer) Reset() {
-	clear(b.Q)
-	clear(b.Visited)
-	clear(b.ShortestPath)
+	parents := make(map[coord.Pos]coord.Pos)
+	parents[b.Start] = coord.NullPos
+	b.Q = []bfsState{{pos: b.Start, length: 1}}
+	b.Visited = make(map[coord.Pos]struct{})
+	b.ShortestPath = make([]coord.Pos, 0)
+	b.Parents = parents
 	b.Currlen = 0
 }
 

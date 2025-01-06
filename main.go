@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"fmt"
 	"image/color"
 	"slices"
 	"strings"
@@ -62,14 +63,16 @@ func main() {
 	explorer := explorers.NewBfsExplorer(board, start, end)
 
 	canceled := atomic.Bool{}
+	solutionDrawn := atomic.Bool{}
 	canceled.Store(false)
+	solutionDrawn.Store(false)
 	btnStartExplore.OnTapped = func() {
 		btnStartExplore.Disable()
 		go func() {
 			for explorer.ExploreUntilNewCellsAreFound() {
 				if canceled.Load() == false {
 					drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(10 * time.Millisecond)
 				} else {
 					canceled.Store(false)
 					explorer.Reset()
@@ -80,13 +83,23 @@ func main() {
 			}
 			drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
 			btnStartExplore.Enable()
+			solutionDrawn.Store(true)
+			fmt.Println("done here", explorer.ShortestPath)
 		}()
 	}
 
+	// there has to be a better way to do the below
 	btnCancelExploration.OnTapped = func() {
+		if solutionDrawn.CompareAndSwap(true, false) {
+			explorer.Reset()
+			drawBoard(start, grid, board, explorer.Visited, explorer.ShortestPath)
+			return
+		}
 		// only swap if canceled is set to false. if it's set to true,
 		// a cancellation hasn't been cleaned up yet.
-		canceled.CompareAndSwap(false, true)
+		if canceled.CompareAndSwap(false, true) {
+			fmt.Println("canceled change value")
+		}
 	}
 
 	myWindow.ShowAndRun()
