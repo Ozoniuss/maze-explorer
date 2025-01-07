@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/Ozoniuss/maze-explorer/coord"
@@ -53,7 +54,12 @@ func main() {
 
 	btnStartExplore := widget.NewButton("Explore!", func() {})
 	btnCancelExploration := widget.NewButton("Cancel", func() {})
-	hbSelectionContent := container.NewHBox(rgExploreType, btnStartExplore, btnCancelExploration)
+
+	waitTime := binding.NewFloat()
+	waitTime.Set(100)
+
+	sldExecutionSpeed := widget.NewSliderWithData(10, 1000, waitTime)
+	hbSelectionContent := container.NewGridWithColumns(6, rgExploreType, btnStartExplore, btnCancelExploration, widget.NewSeparator(), sldExecutionSpeed)
 
 	grid := initBoardContainer(len(board), len(board[0]))
 	content := container.NewVBox(hbSelectionContent, grid)
@@ -72,7 +78,12 @@ func main() {
 			for explorer.ExploreUntilNewCellsAreFound() {
 				if canceled.Load() == false {
 					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
-					time.Sleep(10 * time.Millisecond)
+					wt, err := waitTime.Get()
+					if err != nil {
+						panic(err)
+					}
+					delta := 1010 - int(wt)
+					time.Sleep(time.Duration(delta) * time.Millisecond)
 				} else {
 					canceled.Store(false)
 					explorer.Reset()
