@@ -67,7 +67,7 @@ func main() {
 	myWindow.SetContent(content)
 
 	drawBoard(grid, board, nil, nil)
-	explorer := explorers.NewBfsExplorer(board, start, end)
+	explorer := explorers.NewDfsExplorer(board, start, end)
 
 	// 0 - ready for run
 	// 1 - drawing
@@ -91,7 +91,7 @@ func main() {
 			for explorer.ExploreUntilNewCellsAreFound() {
 				// run was canceled
 				if runState.Load() != 3 {
-					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 					wt, err := waitTime.Get()
 					if err != nil {
 						panic(err)
@@ -100,7 +100,7 @@ func main() {
 					time.Sleep(time.Duration(delta) * time.Millisecond)
 				} else {
 					// Run was canceled, set the state to 4
-					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 					explorer.Reset()
 					btnStartExplore.Enable()
 					// set this only at the end, cause you can get here only
@@ -109,7 +109,7 @@ func main() {
 					return
 				}
 			}
-			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 			btnStartExplore.Enable()
 			// only set this to 1 if the previous state was 1. If it's not 1,
 			// it means it was altered via a cancel.
@@ -119,7 +119,7 @@ func main() {
 				runState.Store(0)
 				explorer.Reset() // explicitly reset the explorer before drawing
 				// the board
-				drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+				drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 			}
 		}()
 	}
@@ -139,7 +139,7 @@ func main() {
 			fmt.Println("state 2")
 			// force a redraw anyway because state may be 1 even outside the
 			// for loop, which no longer checks for this value.
-			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 			runState.Store(0)
 			return
 		}
@@ -147,7 +147,7 @@ func main() {
 		// state 4 means draw was left from when cancel was hit. Erase everything
 		if runState.CompareAndSwap(4, 0) {
 			// explorer is always reset when the function is exited.
-			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
 		}
 	}
 

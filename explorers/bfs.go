@@ -73,6 +73,10 @@ func (b *BfsExplorer) ExploreUntilNewCellsAreFound() bool {
 	return true
 }
 
+func (b *BfsExplorer) GetOccupied() map[coord.Pos]struct{} {
+	return b.Visited
+}
+
 func (b *BfsExplorer) Explore() bool {
 	top := b.Q[0]
 	b.Q = b.Q[1:]
