@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,15 +69,28 @@ func main() {
 	drawBoard(grid, board, nil, nil)
 	explorer := explorers.NewBfsExplorer(board, start, end)
 
-	canceled := atomic.Bool{}
-	solutionDrawn := atomic.Bool{}
-	canceled.Store(false)
-	solutionDrawn.Store(false)
+	// 0 - ready for run
+	// 1 - drawing
+	// 2 - fully drawed, final path shows
+	// 3 - canceled was hit
+	// 4 - paused run by cancel
+	runState := atomic.Int32{}
+	runState.Store(0)
+
+	rmu := &sync.Mutex{}
+
 	btnStartExplore.OnTapped = func() {
 		btnStartExplore.Disable()
 		go func() {
+			// don't want to have two simultaneous runners. Want to reset the
+			// explorer state completely before any run.
+			rmu.Lock()
+			defer rmu.Unlock()
+			runState.Store(1)
+			defer explorer.Reset()
 			for explorer.ExploreUntilNewCellsAreFound() {
-				if canceled.Load() == false {
+				// run was canceled
+				if runState.Load() != 3 {
 					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 					wt, err := waitTime.Get()
 					if err != nil {
@@ -85,31 +99,55 @@ func main() {
 					delta := 1010 - int(wt)
 					time.Sleep(time.Duration(delta) * time.Millisecond)
 				} else {
-					canceled.Store(false)
-					explorer.Reset()
+					// Run was canceled, set the state to 4
 					drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+					explorer.Reset()
 					btnStartExplore.Enable()
+					// set this only at the end, cause you can get here only
+					// if you canceled, which has no effect twice.
+					runState.Store(4)
 					return
 				}
 			}
 			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 			btnStartExplore.Enable()
-			solutionDrawn.Store(true)
-			fmt.Println("done here", explorer.ShortestPath)
+			// only set this to 1 if the previous state was 1. If it's not 1,
+			// it means it was altered via a cancel.
+			if runState.CompareAndSwap(1, 2) {
+				return
+			} else {
+				runState.Store(0)
+				explorer.Reset() // explicitly reset the explorer before drawing
+				// the board
+				drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			}
 		}()
 	}
 
 	// there has to be a better way to do the below
 	btnCancelExploration.OnTapped = func() {
-		if solutionDrawn.CompareAndSwap(true, false) {
-			explorer.Reset()
-			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+		if runState.Load() == 0 {
 			return
 		}
-		// only swap if canceled is set to false. if it's set to true,
-		// a cancellation hasn't been cleaned up yet.
-		if canceled.CompareAndSwap(false, true) {
-			fmt.Println("canceled change value")
+		// run in state 2, redraw required if exiting
+		if runState.CompareAndSwap(1, 3) {
+			fmt.Println("state 1")
+			return
+		}
+		// run in state 1, need to stop the function
+		if runState.CompareAndSwap(2, 3) {
+			fmt.Println("state 2")
+			// force a redraw anyway because state may be 1 even outside the
+			// for loop, which no longer checks for this value.
+			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
+			runState.Store(0)
+			return
+		}
+
+		// state 4 means draw was left from when cancel was hit. Erase everything
+		if runState.CompareAndSwap(4, 0) {
+			// explorer is always reset when the function is exited.
+			drawBoard(grid, board, explorer.Visited, explorer.ShortestPath)
 		}
 	}
 
@@ -142,7 +180,11 @@ func drawLetter(letter string, pos coord.Pos, visited map[coord.Pos]struct{}, sh
 	return final
 }
 
+var dbm = &sync.Mutex{}
+
 func drawBoard(grid *fyne.Container, board [][]byte, visited map[coord.Pos]struct{}, shortestPath []coord.Pos) {
+	dbm.Lock()
+	defer dbm.Unlock()
 	rectangles := grid.Objects
 	size := len(board)
 	for i := range len(board) {
