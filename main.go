@@ -24,6 +24,17 @@ import (
 //go:embed maze.txt
 var maze string
 
+func newExplorer(explType string, board [][]byte, start, end coord.Pos) explorers.Explorer {
+	fmt.Println("new explorer", explType)
+	if explType == "dfs" {
+		return explorers.NewDfsExplorer(board, start, end)
+	} else if explType == "bfs" {
+		return explorers.NewBfsExplorer(board, start, end)
+	} else {
+		panic("invalid explorer type")
+	}
+}
+
 func main() {
 	parts := strings.Split(maze, "\n")
 
@@ -52,6 +63,7 @@ func main() {
 	rgExploreType := widget.NewRadioGroup([]string{"bfs", "dfs"}, func(s string) {})
 	rgExploreType.Selected = "bfs"
 	rgExploreType.Horizontal = true
+	rgExploreType.OnChanged = func(s string) {}
 
 	btnStartExplore := widget.NewButton("Explore!", func() {})
 	btnCancelExploration := widget.NewButton("Cancel", func() {})
@@ -67,7 +79,7 @@ func main() {
 	myWindow.SetContent(content)
 
 	drawBoard(grid, board, nil, nil)
-	explorer := explorers.NewDfsExplorer(board, start, end)
+	explorer := newExplorer(rgExploreType.Selected, board, start, end)
 
 	// 0 - ready for run
 	// 1 - drawing
@@ -80,6 +92,8 @@ func main() {
 	rmu := &sync.Mutex{}
 
 	btnStartExplore.OnTapped = func() {
+		// update the explorer with the latest state of the button
+		explorer := newExplorer(rgExploreType.Selected, board, start, end)
 		btnStartExplore.Disable()
 		go func() {
 			// don't want to have two simultaneous runners. Want to reset the
@@ -88,10 +102,10 @@ func main() {
 			defer rmu.Unlock()
 			runState.Store(1)
 			defer explorer.Reset()
-			for explorer.ExploreUntilNewCellsAreFound() {
+			for explorer.Advance() {
 				// run was canceled
 				if runState.Load() != 3 {
-					drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+					drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 					wt, err := waitTime.Get()
 					if err != nil {
 						panic(err)
@@ -100,7 +114,7 @@ func main() {
 					time.Sleep(time.Duration(delta) * time.Millisecond)
 				} else {
 					// Run was canceled, set the state to 4
-					drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+					drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 					explorer.Reset()
 					btnStartExplore.Enable()
 					// set this only at the end, cause you can get here only
@@ -109,7 +123,7 @@ func main() {
 					return
 				}
 			}
-			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 			btnStartExplore.Enable()
 			// only set this to 1 if the previous state was 1. If it's not 1,
 			// it means it was altered via a cancel.
@@ -119,7 +133,7 @@ func main() {
 				runState.Store(0)
 				explorer.Reset() // explicitly reset the explorer before drawing
 				// the board
-				drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+				drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 			}
 		}()
 	}
@@ -139,7 +153,7 @@ func main() {
 			fmt.Println("state 2")
 			// force a redraw anyway because state may be 1 even outside the
 			// for loop, which no longer checks for this value.
-			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 			runState.Store(0)
 			return
 		}
@@ -147,7 +161,7 @@ func main() {
 		// state 4 means draw was left from when cancel was hit. Erase everything
 		if runState.CompareAndSwap(4, 0) {
 			// explorer is always reset when the function is exited.
-			drawBoard(grid, board, explorer.GetOccupied(), explorer.ShortestPath)
+			drawBoard(grid, board, explorer.GetOccupied(), explorer.GetPath())
 		}
 	}
 

@@ -62,7 +62,7 @@ func (b *BfsExplorer) buildParent() {
 	b.ShortestPath = arr
 }
 
-func (b *BfsExplorer) ExploreUntilNewCellsAreFound() bool {
+func (b *BfsExplorer) Advance() bool {
 	c := b.Currlen
 	for b.Currlen == c {
 		ok := b.Explore()
@@ -77,12 +77,19 @@ func (b *BfsExplorer) GetOccupied() map[coord.Pos]struct{} {
 	return b.Visited
 }
 
+func (b *BfsExplorer) GetPath() []coord.Pos {
+	return b.ShortestPath
+}
+
 func (b *BfsExplorer) Explore() bool {
 	top := b.Q[0]
-	b.Q = b.Q[1:]
-	if b.Currlen <= top.length {
+	// this simply allows Advance to not draw one square of the next sequence
+	// of bigger length until next explore call
+	if b.Currlen < top.length {
 		b.Currlen = top.length
+		return true
 	}
+	b.Q = b.Q[1:]
 	if b.End == top.pos {
 		b.buildParent()
 		return false

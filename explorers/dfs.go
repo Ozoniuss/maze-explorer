@@ -38,6 +38,10 @@ func (d *DfsExplorer) GetOccupied() map[coord.Pos]struct{} {
 	return m
 }
 
+func (d *DfsExplorer) GetPath() []coord.Pos {
+	return d.ShortestPath
+}
+
 func (d *DfsExplorer) Reset() {
 	d.S = make([]coord.Pos, 0)
 	d.Visited = make(map[coord.Pos]struct{})
@@ -45,7 +49,7 @@ func (d *DfsExplorer) Reset() {
 	d.beginning = true
 }
 
-func (d *DfsExplorer) ExploreUntilNewCellsAreFound() bool {
+func (d *DfsExplorer) Advance() bool {
 	return d.Explore()
 }
 
